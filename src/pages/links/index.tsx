@@ -1,8 +1,10 @@
 import { App, Drawer, Modal, Pagination } from "antd";
 import dayjs from "dayjs";
-import { Copy, Eye, Plus, Power, RefreshCw, RotateCcw, Shuffle } from "lucide-react";
+import { Copy, Eye, Flame, Plus, Power, QrCode, RefreshCw, RotateCcw, Shuffle } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useOutletContext, useSearchParams } from "react-router-dom";
+import type { LinkQuickPreset } from "@/components/create-link-drawer";
+import { LinkQRModal } from "@/components/link-qr-modal";
 import { useCopy } from "@/hooks/use-copy";
 import { formatDateTime, formatMB, getPublicBaseURL } from "@/lib/format";
 import { linksApi, logsApi } from "@/services/api";
@@ -11,7 +13,7 @@ import type { AnalyticsResponse, LinkDTO, LinkListItem } from "@/services/api/ty
 import { useAuthStore } from "@/stores/auth-store";
 
 interface ConsoleOutletContext {
-  openCreateLink: () => void;
+  openCreateLink: (preset?: LinkQuickPreset) => void;
 }
 
 const AVAILABILITY_BADGE: Record<string, { label: string; cls: string }> = {
@@ -57,6 +59,9 @@ export default function LinksPage() {
   const [rotateCustomCode, setRotateCustomCode] = useState("");
   const [rotateLoading, setRotateLoading] = useState(false);
 
+  // 二维码弹窗
+  const [qrTarget, setQrTarget] = useState<{ code: string; url: string } | null>(null);
+
   useEffect(() => {
     const qCode = searchParams.get("code");
     if (qCode !== null && qCode !== codeFilter) {
@@ -100,7 +105,7 @@ export default function LinksPage() {
       const detail = await linksApi.get(linkId);
       setActiveLink(detail);
       setDetailOpen(true);
-      if (hasPermission("logs.read")) {
+      if (hasPermission("links.read")) {
         logsApi
           .analyticsLink(linkId, { range: "7d", timeZone: "Asia/Shanghai" })
           .then(setLinkAnalytics)
@@ -208,11 +213,22 @@ export default function LinksPage() {
             查看短链规则、运行态可用性、续期恢复（含过期额度重检）、更换短码与重置访问次数
           </p>
         </div>
-        {hasPermission("links.create") && (
-          <button type="button" onClick={openCreateLink} className="stub-btn signal">
-            <Plus size={15} />
-            新建短链
-          </button>
+        {(hasPermission("links.create_url") || hasPermission("links.create_asset")) && (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => openCreateLink("burn")}
+              className="stub-btn ghost"
+              title="1 次访问 + 口令保护 + 24 小时过期"
+            >
+              <Flame size={15} className="text-[var(--signal)]" />
+              阅后即焚
+            </button>
+            <button type="button" onClick={() => openCreateLink()} className="stub-btn signal">
+              <Plus size={15} />
+              新建短链
+            </button>
+          </div>
         )}
       </div>
 
@@ -347,12 +363,23 @@ export default function LinksPage() {
                     </td>
                     <td className="px-4 py-3 font-mono text-xs">
                       {item.visitsUsed} / {item.maxVisits === -1 ? "∞ (-1)" : item.maxVisits}
+                      {item.maxVisits === 1 && (
+                        <span className="stub-badge signal ml-1.5">阅后即焚</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 font-mono text-xs">
                       {item.expiresAt ? formatDateTime(item.expiresAt) : "不过期"}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setQrTarget({ code: item.code, url: item.url })}
+                          className="stub-btn ghost !h-7 !px-2.5 !text-xs"
+                        >
+                          <QrCode size={12} />
+                          二维码
+                        </button>
                         <button
                           type="button"
                           onClick={() => openDetail(item.linkId)}
@@ -395,19 +422,21 @@ export default function LinksPage() {
                             </button>
                             <button
                               type="button"
-                              onClick={() => handleResetVisits(item)}
-                              className="stub-btn ghost !h-7 !px-2.5 !text-xs"
-                            >
-                              重置次数
-                            </button>
-                            <button
-                              type="button"
                               onClick={() => handleToggleStatus(item)}
                               className="stub-btn ghost !h-7 !px-2.5 !text-xs"
                             >
                               {item.status === "enabled" ? "停用" : "启用"}
                             </button>
                           </>
+                        )}
+                        {hasPermission("links.reset_visits") && (
+                          <button
+                            type="button"
+                            onClick={() => handleResetVisits(item)}
+                            className="stub-btn ghost !h-7 !px-2.5 !text-xs"
+                          >
+                            重置次数
+                          </button>
                         )}
                       </div>
                     </td>
@@ -453,14 +482,24 @@ export default function LinksPage() {
                   <div className="font-mono text-xs text-[var(--ink-3)]">{activeLink.url}</div>
                   <div className="font-display text-4xl leading-none">/r/{activeLink.code}</div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => copy(activeLink.url, "已复制短链 URL")}
-                  className="stub-btn signal !h-8 !px-3 !text-xs"
-                >
-                  <Copy size={13} />
-                  复制短链
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setQrTarget({ code: activeLink.code, url: activeLink.url })}
+                    className="stub-btn ghost !h-8 !px-3 !text-xs"
+                  >
+                    <QrCode size={13} />
+                    二维码
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => copy(activeLink.url, "已复制短链 URL")}
+                    className="stub-btn signal !h-8 !px-3 !text-xs"
+                  >
+                    <Copy size={13} />
+                    复制短链
+                  </button>
+                </div>
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
                 <span
@@ -475,45 +514,51 @@ export default function LinksPage() {
               </div>
             </div>
 
-            {hasPermission("links.manage") && (
+            {(hasPermission("links.manage") || hasPermission("links.reset_visits")) && (
               <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setRenewTarget(activeLink);
-                    setRenewCodeStrategy("keep");
-                  }}
-                  className="stub-btn ghost !h-8 !text-xs"
-                >
-                  续期恢复
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setRotateTarget(activeLink);
-                    setRotateStrategy("generated");
-                  }}
-                  className="stub-btn ghost !h-8 !text-xs"
-                >
-                  <Shuffle size={13} />
-                  更换短码
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleResetVisits(activeLink)}
-                  className="stub-btn ghost !h-8 !text-xs"
-                >
-                  <RotateCcw size={13} />
-                  重置累计访问次数
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleToggleStatus(activeLink)}
-                  className="stub-btn ghost !h-8 !text-xs"
-                >
-                  <Power size={13} />
-                  {activeLink.status === "enabled" ? "停用短链" : "启用短链"}
-                </button>
+                {hasPermission("links.manage") && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRenewTarget(activeLink);
+                        setRenewCodeStrategy("keep");
+                      }}
+                      className="stub-btn ghost !h-8 !text-xs"
+                    >
+                      续期恢复
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRotateTarget(activeLink);
+                        setRotateStrategy("generated");
+                      }}
+                      className="stub-btn ghost !h-8 !text-xs"
+                    >
+                      <Shuffle size={13} />
+                      更换短码
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleStatus(activeLink)}
+                      className="stub-btn ghost !h-8 !text-xs"
+                    >
+                      <Power size={13} />
+                      {activeLink.status === "enabled" ? "停用短链" : "启用短链"}
+                    </button>
+                  </>
+                )}
+                {hasPermission("links.reset_visits") && (
+                  <button
+                    type="button"
+                    onClick={() => handleResetVisits(activeLink)}
+                    className="stub-btn ghost !h-8 !text-xs"
+                  >
+                    <RotateCcw size={13} />
+                    重置累计访问次数
+                  </button>
+                )}
               </div>
             )}
 
@@ -710,6 +755,12 @@ export default function LinksPage() {
           )}
         </div>
       </Modal>
+      <LinkQRModal
+        open={Boolean(qrTarget)}
+        code={qrTarget?.code || ""}
+        url={qrTarget?.url || ""}
+        onClose={() => setQrTarget(null)}
+      />
     </div>
   );
 }

@@ -1,6 +1,8 @@
-import { Copy, Plus } from "lucide-react";
+import { Copy, Flame, Plus, QrCode } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Link, useOutletContext } from "react-router-dom";
+import type { LinkQuickPreset } from "@/components/create-link-drawer";
+import { LinkQRModal } from "@/components/link-qr-modal";
 import { useCopy } from "@/hooks/use-copy";
 import { formatDateTime, formatMB } from "@/lib/format";
 import { linksApi, logsApi } from "@/services/api";
@@ -8,7 +10,7 @@ import type { AnalyticsResponse, LinkListItem } from "@/services/api/types";
 import { useAuthStore } from "@/stores/auth-store";
 
 interface ConsoleOutletContext {
-  openCreateLink: () => void;
+  openCreateLink: (preset?: LinkQuickPreset) => void;
 }
 
 const AVAILABILITY_BADGE: Record<string, { label: string; cls: string }> = {
@@ -27,12 +29,13 @@ export default function OverviewPage() {
   const [analytics, setAnalytics] = useState<AnalyticsResponse | null>(null);
   const [recentLinks, setRecentLinks] = useState<LinkListItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [qrTarget, setQrTarget] = useState<{ code: string; url: string } | null>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const tasks: Promise<unknown>[] = [refreshUsage()];
-      if (hasPermission("logs.read")) {
+      if (hasPermission("links.read")) {
         tasks.push(
           logsApi
             .analyticsSummary({ range, timeZone: "Asia/Shanghai" })
@@ -105,7 +108,16 @@ export default function OverviewPage() {
               </button>
             ))}
           </div>
-          <button type="button" onClick={openCreateLink} className="stub-btn signal !h-9">
+          <button
+            type="button"
+            onClick={() => openCreateLink("burn")}
+            className="stub-btn ghost !h-9"
+            title="1 次访问 + 口令保护 + 24 小时过期"
+          >
+            <Flame size={15} className="text-[var(--signal)]" />
+            阅后即焚
+          </button>
+          <button type="button" onClick={() => openCreateLink()} className="stub-btn signal !h-9">
             <Plus size={15} />
             新建短链
           </button>
@@ -341,19 +353,32 @@ export default function OverviewPage() {
                     </td>
                     <td className="px-4 py-3 font-mono text-xs">
                       {item.visitsUsed} / {item.maxVisits === -1 ? "∞" : item.maxVisits}
+                      {item.maxVisits === 1 && (
+                        <span className="stub-badge signal ml-1.5">阅后即焚</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 font-mono text-xs">
                       {item.expiresAt ? formatDateTime(item.expiresAt) : "不过期"}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <button
-                        type="button"
-                        onClick={() => copy(item.url, "已复制短链 URL")}
-                        className="stub-btn ghost !h-7 !px-2.5 !text-xs"
-                      >
-                        <Copy size={12} />
-                        复制
-                      </button>
+                      <div className="flex justify-end gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setQrTarget({ code: item.code, url: item.url })}
+                          className="stub-btn ghost !h-7 !px-2.5 !text-xs"
+                        >
+                          <QrCode size={12} />
+                          二维码
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => copy(item.url, "已复制短链 URL")}
+                          className="stub-btn ghost !h-7 !px-2.5 !text-xs"
+                        >
+                          <Copy size={12} />
+                          复制
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -369,6 +394,13 @@ export default function OverviewPage() {
           </table>
         </div>
       </div>
+
+      <LinkQRModal
+        open={Boolean(qrTarget)}
+        code={qrTarget?.code || ""}
+        url={qrTarget?.url || ""}
+        onClose={() => setQrTarget(null)}
+      />
     </div>
   );
 }
