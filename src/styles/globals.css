@@ -1,0 +1,222 @@
+@import "tailwindcss";
+
+:root {
+  --paper: #f2eee4;
+  --paper-2: #e9e3d4;
+  --paper-3: #fbf9f4;
+  --ink: #17150f;
+  --ink-2: #4a463c;
+  --ink-3: #8a8475;
+  --line: #d8d0bd;
+  --line-2: #c6bca5;
+  --signal: #ff4d1a;
+  --signal-ink: #c2330a;
+  --signal-soft: #ffe2d4;
+  --ok: #2f7d4f;
+  --ok-soft: #dcebdf;
+  --warn: #b97f00;
+  --warn-soft: #f6e8c4;
+  --danger: #c2361b;
+  --danger-soft: #f6d9d0;
+  --font-display: "Instrument Serif", "Noto Serif SC", serif;
+  --font-cn-display: "Noto Serif SC", "Songti SC", serif;
+  --font-body: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-mono: "IBM Plex Mono", "Cascadia Mono", Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  color: var(--ink);
+  background: var(--paper);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+.font-cn-display {
+  font-family: var(--font-cn-display);
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+/* 纸张颗粒纹理 */
+.grain::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 999;
+  opacity: 0.32;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .08 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* 票根品牌 Logo 缺口印章 */
+.stub-mark {
+  display: inline-grid;
+  place-items: center;
+  background: var(--signal);
+  color: #fff;
+  font-style: normal;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  border-radius: 3px;
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    100% 35%,
+    88% 50%,
+    100% 65%,
+    100% 100%,
+    0 100%,
+    0 65%,
+    12% 50%,
+    0 35%
+  );
+}
+
+/* 票根风格主按钮 */
+.stub-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 16px;
+  border: 1px solid var(--ink);
+  border-radius: 4px;
+  background: var(--ink);
+  color: var(--paper);
+  cursor: pointer;
+  font-weight: 500;
+  transition: transform 0.15s, background 0.15s, box-shadow 0.15s;
+  white-space: nowrap;
+}
+
+.stub-btn:hover:not(:disabled) {
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 var(--signal);
+}
+
+.stub-btn:active:not(:disabled) {
+  transform: none;
+  box-shadow: none;
+}
+
+.stub-btn.signal {
+  background: var(--signal);
+  border-color: var(--signal);
+  color: #fff;
+}
+
+.stub-btn.signal:hover:not(:disabled) {
+  box-shadow: 3px 3px 0 var(--ink);
+}
+
+.stub-btn.ghost {
+  background: transparent;
+  color: var(--ink);
+  border-color: var(--line-2);
+}
+
+.stub-btn.ghost:hover:not(:disabled) {
+  border-color: var(--ink);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+
+.stub-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* 票根状态标签 */
+.stub-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 3px;
+  font-size: 12px;
+  font-weight: 500;
+  background: var(--paper-2);
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.stub-tag::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.stub-tag.plain::before {
+  display: none;
+}
+
+.stub-tag.ok {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.stub-tag.warn {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.stub-tag.danger {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.stub-tag.signal {
+  background: var(--signal-soft);
+  color: var(--signal-ink);
+}
+
+.stub-tag.ink {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes slide-marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-rise {
+  animation: rise 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.animate-marquee {
+  animation: slide-marquee 36s linear infinite;
+}
