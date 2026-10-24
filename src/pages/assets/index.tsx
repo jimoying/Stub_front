@@ -263,7 +263,7 @@ export default function AssetsPage() {
                     <td className="px-4 py-3 font-mono text-xs">{formatDateTime(item.createdAt)}</td>
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-1.5">
-                        {!isDeleted && hasPermission("links.create_asset") && (
+                        {!isDeleted && hasPermission("links.create") && (
                           <button
                             type="button"
                             onClick={() => setLinkAssetId(item.assetId)}
@@ -283,7 +283,7 @@ export default function AssetsPage() {
                             软删除
                           </button>
                         )}
-                        {isDeleted && hasPermission("assets.restore") && (
+                        {isDeleted && hasPermission("assets.delete") && (
                           <button
                             type="button"
                             onClick={() => handleRestore(item)}

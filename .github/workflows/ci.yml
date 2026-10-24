@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    name: Typecheck / Build / Docker 构建
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: 安装 Node 22
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 类型检查
+        run: npm run typecheck
+
+      - name: 构建
+        run: npm run build
+
+      # run 页面底部 Artifacts 可下载 dist.zip (保留 14 天)
+      - name: 上传 dist 产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: stub-front-dist
+          path: dist/
+          retention-days: 14
+          if-no-files-found: error
+
+      # GHCR 登录: 仅 master push 推镜像; PR 与其他分支只做构建冒烟
+      - name: 登录 GHCR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # master push: 构建 + 推送 ghcr.io/<owner>/stub-front:latest 与 :git-sha
+      # 其他情况: 仅构建 (push=false), 即冒烟验证
+      - name: Docker 构建 (master 推送 GHCR)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' }}
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/stub-front:latest
+            ghcr.io/${{ github.repository_owner }}/stub-front:${{ github.sha }}
