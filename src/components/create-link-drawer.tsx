@@ -501,7 +501,7 @@ export function CreateLinkDrawer({
           </div>
 
           <div className="flex items-center gap-2.5 font-mono text-[11px] tracking-widest text-[var(--ink-3)]">
-            <span>02 · 访问规则来源（三选一互斥）</span>
+            <span>03 · 访问规则来源（三选一互斥）</span>
             <span className="h-px flex-1 bg-[var(--line)]" />
           </div>
 

@@ -1,6 +1,18 @@
 import { App, Drawer, Modal, Pagination, Select } from "antd";
 import dayjs from "dayjs";
-import { Copy, Eye, Flame, Pencil, Plus, Power, QrCode, RefreshCw, RotateCcw, Shuffle, SlidersHorizontal } from "lucide-react";
+import {
+  Copy,
+  Eye,
+  Flame,
+  Pencil,
+  Plus,
+  Power,
+  QrCode,
+  RefreshCw,
+  RotateCcw,
+  Shuffle,
+  SlidersHorizontal,
+} from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useOutletContext, useSearchParams } from "react-router-dom";
 import type { LinkQuickPreset } from "@/components/create-link-drawer";
@@ -59,7 +71,9 @@ export default function LinksPage() {
   const [rulesCIDRs, setRulesCIDRs] = useState("");
   const [rulesRequirePassword, setRulesRequirePassword] = useState(false);
   const [rulesPassword, setRulesPassword] = useState("");
-  const [rulesPasswordStrategy, setRulesPasswordStrategy] = useState<"fixed_cooldown" | "progressive_cooldown">("fixed_cooldown");
+  const [rulesPasswordStrategy, setRulesPasswordStrategy] = useState<
+    "fixed_cooldown" | "progressive_cooldown"
+  >("fixed_cooldown");
   const [rulesLoading, setRulesLoading] = useState(false);
 
   // 续期弹窗
@@ -105,7 +119,19 @@ export default function LinksPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, targetType, availability, status, codeFilter, keywordFilter, assetIdFilter, isAdmin, workspaceIdFilter, message]);
+  }, [
+    page,
+    pageSize,
+    targetType,
+    availability,
+    status,
+    codeFilter,
+    keywordFilter,
+    assetIdFilter,
+    isAdmin,
+    workspaceIdFilter,
+    message,
+  ]);
 
   useEffect(() => {
     fetchList();
@@ -221,7 +247,11 @@ export default function LinksPage() {
 
   const handleMetadataSubmit = async () => {
     if (!metadataTarget) return;
-    if (metadataTitle.trim().length > 120 || metadataTags.length > 20 || metadataTags.some((tag) => tag.trim().length > 32)) {
+    if (
+      metadataTitle.trim().length > 120 ||
+      metadataTags.length > 20 ||
+      metadataTags.some((tag) => tag.trim().length > 32)
+    ) {
       message.warning("标题最多 120 字，最多 20 个标签且每个标签不超过 32 字");
       return;
     }
@@ -244,6 +274,10 @@ export default function LinksPage() {
 
   const handleRulesSubmit = async () => {
     if (!rulesTarget) return;
+    if (!rulesMaxVisits.trim()) {
+      message.warning("请输入访问次数上限，-1 表示不限");
+      return;
+    }
     const maxVisits = Number(rulesMaxVisits);
     if (!Number.isInteger(maxVisits) || maxVisits < -1) {
       message.warning("访问次数必须为 -1、0 或正整数");
@@ -438,9 +472,13 @@ export default function LinksPage() {
                         {item.title || "未命名短链"}
                       </div>
                       {item.tags.length > 0 && (
-                        <div className="mt-1 flex max-w-64 flex-wrap gap-1">
-                          {item.tags.map((tag) => <span key={tag} className="stub-badge neutral">{tag}</span>)}
-                        </div>
+        <div className="mt-1 flex max-w-64 flex-wrap gap-1">
+          {item.tags.map((tag) => (
+            <span key={tag} className="stub-badge neutral">
+              {tag}
+            </span>
+          ))}
+        </div>
                       )}
                       <div className="flex items-center gap-2">
                         <span className="stub-code">/r/{item.code}</span>
@@ -463,7 +501,14 @@ export default function LinksPage() {
                       ) : (
                         <>
                           <span className="stub-badge neutral">url · HTTPS</span>
-                          {item.targetUrl && <div className="mt-1 max-w-56 truncate font-sans text-[11px] text-[var(--ink-3)]" title={item.targetUrl}>{item.targetUrl}</div>}
+                          {item.targetUrl && (
+                            <div
+                              className="mt-1 max-w-56 truncate font-sans text-[11px] text-[var(--ink-3)]"
+                              title={item.targetUrl}
+                            >
+                              {item.targetUrl}
+                            </div>
+                          )}
                         </>
                       )}
                     </td>
@@ -623,7 +668,15 @@ export default function LinksPage() {
               </div>
               <div className="mt-3">
                 <div className="font-medium">{activeLink.title || "未命名短链"}</div>
-                {activeLink.tags.length > 0 && <div className="mt-1.5 flex flex-wrap gap-1">{activeLink.tags.map((tag) => <span key={tag} className="stub-badge neutral">{tag}</span>)}</div>}
+                {activeLink.tags.length > 0 && (
+                  <div className="mt-1.5 flex flex-wrap gap-1">
+                    {activeLink.tags.map((tag) => (
+                      <span key={tag} className="stub-badge neutral">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -802,7 +855,15 @@ export default function LinksPage() {
           </label>
           <label className="flex flex-col gap-1.5 text-xs font-medium text-[var(--ink-2)]">
             标签 <span className="font-normal text-[var(--ink-3)]">可选，最多 20 个</span>
-            <Select mode="tags" value={metadataTags} onChange={(values: string[]) => setMetadataTags(values.slice(0, 20))} placeholder="输入后按 Enter 添加标签" tokenSeparators={[",", "，"]} maxTagCount="responsive" options={[]} />
+            <Select
+              mode="tags"
+              value={metadataTags}
+              onChange={(values: string[]) => setMetadataTags(values.slice(0, 20))}
+              placeholder="输入后按 Enter 添加标签"
+              tokenSeparators={[",", "，"]}
+              maxTagCount="responsive"
+              options={[]}
+            />
           </label>
         </div>
       </Modal>
@@ -819,15 +880,32 @@ export default function LinksPage() {
         <div className="flex flex-col gap-4 pt-2">
           <label className="flex flex-col gap-1.5 text-xs font-medium text-[var(--ink-2)]">
             到期时间 <span className="font-normal text-[var(--ink-3)]">留空表示不过期</span>
-            <input type="datetime-local" value={rulesExpiresAt} onChange={(e) => setRulesExpiresAt(e.target.value)} className="h-10 rounded border border-[var(--line-2)] bg-[var(--paper-3)] px-3 font-mono text-sm outline-none" />
+            <input
+              type="datetime-local"
+              value={rulesExpiresAt}
+              onChange={(e) => setRulesExpiresAt(e.target.value)}
+              className="h-10 rounded border border-[var(--line-2)] bg-[var(--paper-3)] px-3 font-mono text-sm outline-none"
+            />
           </label>
           <label className="flex flex-col gap-1.5 text-xs font-medium text-[var(--ink-2)]">
             最大访问次数 <span className="font-normal text-[var(--ink-3)]">-1 不限，0 禁止，正整数为上限；不会重置已用次数</span>
-            <input type="number" min={-1} step={1} value={rulesMaxVisits} onChange={(e) => setRulesMaxVisits(e.target.value)} className="h-10 rounded border border-[var(--line-2)] bg-[var(--paper-3)] px-3 font-mono text-sm outline-none" />
+            <input
+              type="number"
+              min={-1}
+              step={1}
+              value={rulesMaxVisits}
+              onChange={(e) => setRulesMaxVisits(e.target.value)}
+              className="h-10 rounded border border-[var(--line-2)] bg-[var(--paper-3)] px-3 font-mono text-sm outline-none"
+            />
           </label>
           <label className="flex flex-col gap-1.5 text-xs font-medium text-[var(--ink-2)]">
             允许访问的 IP/CIDR <span className="font-normal text-[var(--ink-3)]">每行一个，留空表示不限制</span>
-            <textarea rows={3} value={rulesCIDRs} onChange={(e) => setRulesCIDRs(e.target.value)} className="rounded border border-[var(--line-2)] bg-[var(--paper-3)] px-3 py-2 font-mono text-sm outline-none" />
+            <textarea
+              rows={3}
+              value={rulesCIDRs}
+              onChange={(e) => setRulesCIDRs(e.target.value)}
+              className="rounded border border-[var(--line-2)] bg-[var(--paper-3)] px-3 py-2 font-mono text-sm outline-none"
+            />
           </label>
           <label className="flex items-center gap-2 text-xs font-medium text-[var(--ink-2)]">
             <input type="checkbox" checked={rulesRequirePassword} onChange={(e) => setRulesRequirePassword(e.target.checked)} />
@@ -837,7 +915,13 @@ export default function LinksPage() {
             <>
               <label className="flex flex-col gap-1.5 text-xs font-medium text-[var(--ink-2)]">
                 新口令 <span className="font-normal text-[var(--ink-3)]">留空保留当前口令；从关闭状态启用时必填</span>
-                <input type="password" value={rulesPassword} onChange={(e) => setRulesPassword(e.target.value)} autoComplete="new-password" className="h-10 rounded border border-[var(--line-2)] bg-[var(--paper-3)] px-3 text-sm outline-none" />
+                <input
+                  type="password"
+                  value={rulesPassword}
+                  onChange={(e) => setRulesPassword(e.target.value)}
+                  autoComplete="new-password"
+                  className="h-10 rounded border border-[var(--line-2)] bg-[var(--paper-3)] px-3 text-sm outline-none"
+                />
               </label>
               <label className="flex flex-col gap-1.5 text-xs font-medium text-[var(--ink-2)]">
                 错误口令策略
