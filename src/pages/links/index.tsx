@@ -1,6 +1,6 @@
-import { App, Drawer, Modal, Pagination } from "antd";
+import { App, Drawer, Modal, Pagination, Select } from "antd";
 import dayjs from "dayjs";
-import { Copy, Eye, Flame, Plus, Power, QrCode, RefreshCw, RotateCcw, Shuffle } from "lucide-react";
+import { Copy, Eye, Flame, Pencil, Plus, Power, QrCode, RefreshCw, RotateCcw, Shuffle, SlidersHorizontal } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useOutletContext, useSearchParams } from "react-router-dom";
 import type { LinkQuickPreset } from "@/components/create-link-drawer";
@@ -40,12 +40,27 @@ export default function LinksPage() {
   const [availability, setAvailability] = useState<string>("");
   const [status, setStatus] = useState<string>("");
   const [codeFilter, setCodeFilter] = useState<string>(searchParams.get("code") || "");
+  const [keywordFilter, setKeywordFilter] = useState("");
+  const [assetIdFilter, setAssetIdFilter] = useState("");
   const [workspaceIdFilter, setWorkspaceIdFilter] = useState<string>("");
 
   // 详情抽屉
   const [activeLink, setActiveLink] = useState<LinkDTO | null>(null);
   const [linkAnalytics, setLinkAnalytics] = useState<AnalyticsResponse | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+
+  const [metadataTarget, setMetadataTarget] = useState<LinkDTO | null>(null);
+  const [metadataTitle, setMetadataTitle] = useState("");
+  const [metadataTags, setMetadataTags] = useState<string[]>([]);
+  const [metadataLoading, setMetadataLoading] = useState(false);
+  const [rulesTarget, setRulesTarget] = useState<LinkDTO | null>(null);
+  const [rulesExpiresAt, setRulesExpiresAt] = useState("");
+  const [rulesMaxVisits, setRulesMaxVisits] = useState("-1");
+  const [rulesCIDRs, setRulesCIDRs] = useState("");
+  const [rulesRequirePassword, setRulesRequirePassword] = useState(false);
+  const [rulesPassword, setRulesPassword] = useState("");
+  const [rulesPasswordStrategy, setRulesPasswordStrategy] = useState<"fixed_cooldown" | "progressive_cooldown">("fixed_cooldown");
+  const [rulesLoading, setRulesLoading] = useState(false);
 
   // 续期弹窗
   const [renewTarget, setRenewTarget] = useState<LinkListItem | LinkDTO | null>(null);
@@ -79,6 +94,8 @@ export default function LinksPage() {
         availability: availability || undefined,
         status: status || undefined,
         code: codeFilter.trim() || undefined,
+        keyword: keywordFilter.trim() || undefined,
+        assetId: assetIdFilter.trim() || undefined,
         workspaceId: isAdmin && workspaceIdFilter.trim() ? workspaceIdFilter.trim() : undefined,
       });
       setItems(res.items);
@@ -88,7 +105,7 @@ export default function LinksPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, targetType, availability, status, codeFilter, isAdmin, workspaceIdFilter, message]);
+  }, [page, pageSize, targetType, availability, status, codeFilter, keywordFilter, assetIdFilter, isAdmin, workspaceIdFilter, message]);
 
   useEffect(() => {
     fetchList();
@@ -202,6 +219,67 @@ export default function LinksPage() {
     }
   };
 
+  const handleMetadataSubmit = async () => {
+    if (!metadataTarget) return;
+    if (metadataTitle.trim().length > 120 || metadataTags.length > 20 || metadataTags.some((tag) => tag.trim().length > 32)) {
+      message.warning("标题最多 120 字，最多 20 个标签且每个标签不超过 32 字");
+      return;
+    }
+    setMetadataLoading(true);
+    try {
+      const updated = await linksApi.updateMetadata(metadataTarget.linkId, {
+        title: metadataTitle.trim(),
+        tags: metadataTags.map((tag) => tag.trim()).filter(Boolean),
+      });
+      setActiveLink(updated);
+      setMetadataTarget(null);
+      message.success("短链标题和标签已更新");
+      fetchList();
+    } catch (err) {
+      message.error(err instanceof ApiError ? err.message : "更新短链信息失败");
+    } finally {
+      setMetadataLoading(false);
+    }
+  };
+
+  const handleRulesSubmit = async () => {
+    if (!rulesTarget) return;
+    const maxVisits = Number(rulesMaxVisits);
+    if (!Number.isInteger(maxVisits) || maxVisits < -1) {
+      message.warning("访问次数必须为 -1、0 或正整数");
+      return;
+    }
+    const expiration = rulesExpiresAt ? dayjs(rulesExpiresAt) : null;
+    if (expiration && (!expiration.isValid() || !expiration.isAfter(dayjs()))) {
+      message.warning("到期时间必须晚于当前时间，留空表示不过期");
+      return;
+    }
+    if (rulesRequirePassword && !rulesTarget.rules.requirePassword && !rulesPassword.trim()) {
+      message.warning("启用访问口令时必须设置新口令");
+      return;
+    }
+    setRulesLoading(true);
+    try {
+      const updated = await linksApi.updateRules(rulesTarget.linkId, {
+        expiresAt: expiration?.toISOString() ?? null,
+        maxVisits,
+        allowedIpCidrs: rulesCIDRs.split(/[\n,]/).map((value) => value.trim()).filter(Boolean),
+        requirePassword: rulesRequirePassword,
+        accessPassword: rulesPassword.trim() || undefined,
+        wrongPasswordPolicy: rulesRequirePassword ? { strategy: rulesPasswordStrategy } : undefined,
+      });
+      setActiveLink(updated);
+      setRulesTarget(null);
+      setRulesPassword("");
+      message.success("短链访问规则已更新");
+      fetchList();
+    } catch (err) {
+      message.error(err instanceof ApiError ? err.message : "更新短链规则失败");
+    } finally {
+      setRulesLoading(false);
+    }
+  };
+
   const baseHost = getPublicBaseURL().replace(/^https?:\/\//, "");
 
   return (
@@ -285,6 +363,26 @@ export default function LinksPage() {
         </select>
 
         <input
+          value={keywordFilter}
+          onChange={(e) => {
+            setKeywordFilter(e.target.value);
+            setPage(1);
+          }}
+          placeholder="搜索标题、标签、短码或目标 URL"
+          className="h-9 w-64 rounded border border-[var(--line-2)] bg-[var(--paper-3)] px-3 text-xs outline-none focus:border-[var(--ink)]"
+        />
+
+        <input
+          value={assetIdFilter}
+          onChange={(e) => {
+            setAssetIdFilter(e.target.value);
+            setPage(1);
+          }}
+          placeholder="素材 A_Id 精确筛选"
+          className="h-9 w-52 rounded border border-[var(--line-2)] bg-[var(--paper-3)] px-3 font-mono text-xs outline-none focus:border-[var(--ink)]"
+        />
+
+        <input
           value={codeFilter}
           onChange={(e) => {
             setCodeFilter(e.target.value);
@@ -336,6 +434,14 @@ export default function LinksPage() {
                 return (
                   <tr key={item.linkId} className="hover:bg-[#fffdf8]">
                     <td className="px-4 py-3">
+                      <div className="max-w-64 truncate font-medium" title={item.title || undefined}>
+                        {item.title || "未命名短链"}
+                      </div>
+                      {item.tags.length > 0 && (
+                        <div className="mt-1 flex max-w-64 flex-wrap gap-1">
+                          {item.tags.map((tag) => <span key={tag} className="stub-badge neutral">{tag}</span>)}
+                        </div>
+                      )}
                       <div className="flex items-center gap-2">
                         <span className="stub-code">/r/{item.code}</span>
                         <button
@@ -355,7 +461,10 @@ export default function LinksPage() {
                           minio_asset {item.assetSizeBytes ? `· ${formatMB(item.assetSizeBytes)}` : ""}
                         </span>
                       ) : (
-                        <span className="stub-badge neutral">url · HTTPS</span>
+                        <>
+                          <span className="stub-badge neutral">url · HTTPS</span>
+                          {item.targetUrl && <div className="mt-1 max-w-56 truncate font-sans text-[11px] text-[var(--ink-3)]" title={item.targetUrl}>{item.targetUrl}</div>}
+                        </>
                       )}
                     </td>
                     <td className="px-4 py-3">
@@ -512,12 +621,44 @@ export default function LinksPage() {
                 <span className="stub-badge neutral">status: {activeLink.status}</span>
                 <span className="stub-badge neutral">linkId: {activeLink.linkId}</span>
               </div>
+              <div className="mt-3">
+                <div className="font-medium">{activeLink.title || "未命名短链"}</div>
+                {activeLink.tags.length > 0 && <div className="mt-1.5 flex flex-wrap gap-1">{activeLink.tags.map((tag) => <span key={tag} className="stub-badge neutral">{tag}</span>)}</div>}
+              </div>
             </div>
 
             {(hasPermission("links.manage") || hasPermission("links.reset_visits")) && (
               <div className="flex flex-wrap gap-2">
                 {hasPermission("links.manage") && (
                   <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMetadataTarget(activeLink);
+                        setMetadataTitle(activeLink.title);
+                        setMetadataTags(activeLink.tags);
+                      }}
+                      className="stub-btn ghost !h-8 !text-xs"
+                    >
+                      <Pencil size={13} />
+                      编辑标题和标签
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRulesTarget(activeLink);
+                        setRulesExpiresAt(activeLink.expiresAt ? dayjs(activeLink.expiresAt).format("YYYY-MM-DDTHH:mm") : "");
+                        setRulesMaxVisits(String(activeLink.rules.maxVisits));
+                        setRulesCIDRs(activeLink.rules.allowedIpCidrs.join("\n"));
+                        setRulesRequirePassword(activeLink.rules.requirePassword);
+                        setRulesPassword("");
+                        setRulesPasswordStrategy(activeLink.rules.wrongPasswordPolicy?.strategy || "fixed_cooldown");
+                      }}
+                      className="stub-btn ghost !h-8 !text-xs"
+                    >
+                      <SlidersHorizontal size={13} />
+                      编辑访问规则
+                    </button>
                     <button
                       type="button"
                       onClick={() => {
@@ -644,6 +785,72 @@ export default function LinksPage() {
           </div>
         )}
       </Drawer>
+
+      <Modal
+        title={`编辑短链信息 /r/${metadataTarget?.code || ""}`}
+        open={Boolean(metadataTarget)}
+        onCancel={() => setMetadataTarget(null)}
+        onOk={handleMetadataSubmit}
+        confirmLoading={metadataLoading}
+        okText="保存信息"
+        cancelText="取消"
+      >
+        <div className="flex flex-col gap-4 pt-2">
+          <label className="flex flex-col gap-1.5 text-xs font-medium text-[var(--ink-2)]">
+            标题 <span className="font-normal text-[var(--ink-3)]">可选，最多 120 字</span>
+            <input value={metadataTitle} maxLength={120} onChange={(e) => setMetadataTitle(e.target.value)} className="h-10 rounded border border-[var(--line-2)] bg-[var(--paper-3)] px-3 text-sm outline-none" />
+          </label>
+          <label className="flex flex-col gap-1.5 text-xs font-medium text-[var(--ink-2)]">
+            标签 <span className="font-normal text-[var(--ink-3)]">可选，最多 20 个</span>
+            <Select mode="tags" value={metadataTags} onChange={(values: string[]) => setMetadataTags(values.slice(0, 20))} placeholder="输入后按 Enter 添加标签" tokenSeparators={[",", "，"]} maxTagCount="responsive" options={[]} />
+          </label>
+        </div>
+      </Modal>
+
+      <Modal
+        title={`编辑访问规则 /r/${rulesTarget?.code || ""}`}
+        open={Boolean(rulesTarget)}
+        onCancel={() => setRulesTarget(null)}
+        onOk={handleRulesSubmit}
+        confirmLoading={rulesLoading}
+        okText="保存规则"
+        cancelText="取消"
+      >
+        <div className="flex flex-col gap-4 pt-2">
+          <label className="flex flex-col gap-1.5 text-xs font-medium text-[var(--ink-2)]">
+            到期时间 <span className="font-normal text-[var(--ink-3)]">留空表示不过期</span>
+            <input type="datetime-local" value={rulesExpiresAt} onChange={(e) => setRulesExpiresAt(e.target.value)} className="h-10 rounded border border-[var(--line-2)] bg-[var(--paper-3)] px-3 font-mono text-sm outline-none" />
+          </label>
+          <label className="flex flex-col gap-1.5 text-xs font-medium text-[var(--ink-2)]">
+            最大访问次数 <span className="font-normal text-[var(--ink-3)]">-1 不限，0 禁止，正整数为上限；不会重置已用次数</span>
+            <input type="number" min={-1} step={1} value={rulesMaxVisits} onChange={(e) => setRulesMaxVisits(e.target.value)} className="h-10 rounded border border-[var(--line-2)] bg-[var(--paper-3)] px-3 font-mono text-sm outline-none" />
+          </label>
+          <label className="flex flex-col gap-1.5 text-xs font-medium text-[var(--ink-2)]">
+            允许访问的 IP/CIDR <span className="font-normal text-[var(--ink-3)]">每行一个，留空表示不限制</span>
+            <textarea rows={3} value={rulesCIDRs} onChange={(e) => setRulesCIDRs(e.target.value)} className="rounded border border-[var(--line-2)] bg-[var(--paper-3)] px-3 py-2 font-mono text-sm outline-none" />
+          </label>
+          <label className="flex items-center gap-2 text-xs font-medium text-[var(--ink-2)]">
+            <input type="checkbox" checked={rulesRequirePassword} onChange={(e) => setRulesRequirePassword(e.target.checked)} />
+            要求访问口令
+          </label>
+          {rulesRequirePassword && (
+            <>
+              <label className="flex flex-col gap-1.5 text-xs font-medium text-[var(--ink-2)]">
+                新口令 <span className="font-normal text-[var(--ink-3)]">留空保留当前口令；从关闭状态启用时必填</span>
+                <input type="password" value={rulesPassword} onChange={(e) => setRulesPassword(e.target.value)} autoComplete="new-password" className="h-10 rounded border border-[var(--line-2)] bg-[var(--paper-3)] px-3 text-sm outline-none" />
+              </label>
+              <label className="flex flex-col gap-1.5 text-xs font-medium text-[var(--ink-2)]">
+                错误口令策略
+                <select value={rulesPasswordStrategy} onChange={(e) => setRulesPasswordStrategy(e.target.value as typeof rulesPasswordStrategy)} className="h-10 rounded border border-[var(--line-2)] bg-[var(--paper-3)] px-3 text-sm outline-none">
+                  <option value="fixed_cooldown">固定冷却</option>
+                  <option value="progressive_cooldown">逐步冷却</option>
+                </select>
+              </label>
+            </>
+          )}
+          <p className="text-[11px] leading-5 text-[var(--ink-3)]">规则修改会记录审计；短链目标、短码、累计访问次数和创建时引用的模板版本不会改变。</p>
+        </div>
+      </Modal>
 
       {/* 续期弹窗 */}
       <Modal

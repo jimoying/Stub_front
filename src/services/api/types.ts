@@ -196,6 +196,8 @@ export interface LinkTargetDTO {
 }
 
 export interface CreateLinkRequest {
+  title?: string;
+  tags?: string[];
   code?: string;
   target: LinkTargetInput;
   expiresAt?: string | null;
@@ -209,6 +211,8 @@ export interface CreateLinkRequest {
 
 export interface LinkDTO {
   linkId: string;
+  title: string;
+  tags: string[];
   code: string;
   url: string;
   target: LinkTargetDTO;
@@ -224,9 +228,13 @@ export interface LinkDTO {
 
 export interface LinkListItem {
   linkId: string;
+  title: string;
+  tags: string[];
   code: string;
   url: string;
   targetType: "url" | "minio_asset";
+  targetUrl?: string;
+  assetId?: string;
   assetSizeBytes?: number;
   status: "enabled" | "disabled";
   availability: "available" | "expired" | "visit_limit_reached" | "disabled";
@@ -234,6 +242,20 @@ export interface LinkListItem {
   visitsUsed: number;
   maxVisits: number;
   createdAt: string;
+}
+
+export interface UpdateLinkMetadataRequest {
+  title: string;
+  tags: string[];
+}
+
+export interface UpdateLinkRulesRequest {
+  expiresAt?: string | null;
+  maxVisits?: number;
+  allowedIpCidrs?: string[];
+  requirePassword?: boolean;
+  accessPassword?: string;
+  wrongPasswordPolicy?: PasswordPolicy;
 }
 
 export interface RenewLinkRequest {

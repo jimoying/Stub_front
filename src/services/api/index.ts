@@ -14,6 +14,8 @@ import type {
   InviteCreateResponse,
   InviteDTO,
   LinkDTO,
+  UpdateLinkMetadataRequest,
+  UpdateLinkRulesRequest,
   LinkListItem,
   LoginRequest,
   LoginResponse,
@@ -103,11 +105,25 @@ export const linksApi = {
     workspaceId?: string;
     targetType?: string;
     code?: string;
+    keyword?: string;
+    assetId?: string;
     createdFrom?: string;
     createdTo?: string;
   }) => request<PageResponse<LinkListItem>>("/links", { query: params }),
 
   get: (linkId: string) => request<LinkDTO>(`/links/${encodeURIComponent(linkId)}`),
+
+  updateMetadata: (linkId: string, body: UpdateLinkMetadataRequest) =>
+    request<LinkDTO>(`/links/${encodeURIComponent(linkId)}/metadata`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+
+  updateRules: (linkId: string, body: UpdateLinkRulesRequest) =>
+    request<LinkDTO>(`/links/${encodeURIComponent(linkId)}/rules`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
 
   renew: (linkId: string, body: RenewLinkRequest) =>
     request<RenewLinkResponse>(`/links/${encodeURIComponent(linkId)}/renew`, {

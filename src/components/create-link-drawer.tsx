@@ -1,4 +1,4 @@
-import { App, Drawer, Modal, QRCode } from "antd";
+import { App, Drawer, Input, Modal, QRCode, Select } from "antd";
 import dayjs from "dayjs";
 import { Download, Flame, Globe, PackageCheck } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -47,6 +47,8 @@ export function CreateLinkDrawer({
   const [targetUrl, setTargetUrl] = useState("");
   const [assetId, setAssetId] = useState(initialAssetId);
   const [assets, setAssets] = useState<AssetDTO[]>([]);
+  const [title, setTitle] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
 
   const [customCode, setCustomCode] = useState("");
   const [expirePreset, setExpirePreset] = useState<"1d" | "7d" | "30d" | "custom" | "never">("7d");
@@ -95,6 +97,8 @@ export function CreateLinkDrawer({
   useEffect(() => {
     if (!open) return;
     setTargetType(initialTargetType);
+    setTitle("");
+    setTags([]);
     if (initialAssetId) setAssetId(initialAssetId);
     if (initialPreset) {
       applyPreset(initialPreset);
@@ -173,6 +177,10 @@ export function CreateLinkDrawer({
       message.warning("请选择或输入素材 ID");
       return;
     }
+    if (title.trim().length > 120 || tags.length > 20 || tags.some((tag) => tag.trim().length > 32)) {
+      message.warning("标题最多 120 字，最多 20 个标签且每个标签不超过 32 字");
+      return;
+    }
     if (effectiveRequirePassword && !accessPassword) {
       message.warning("当前规则要求启用访问口令，请填写该短链的访问口令");
       return;
@@ -192,6 +200,8 @@ export function CreateLinkDrawer({
     }
 
     const payload: CreateLinkRequest = {
+      title: title.trim(),
+      tags: tags.map((tag) => tag.trim()).filter(Boolean),
       code: customCode.trim() ? customCode.trim().toLowerCase() : undefined,
       target:
         targetType === "url"
@@ -333,7 +343,35 @@ export function CreateLinkDrawer({
           </div>
 
           <div className="flex items-center gap-2.5 font-mono text-[11px] tracking-widest text-[var(--ink-3)]">
-            <span>01 · 目标（创建后不可修改）</span>
+            <span>01 · 标题与标签（创建后可编辑）</span>
+            <span className="h-px flex-1 bg-[var(--line)]" />
+          </div>
+          <div className="grid gap-3">
+            <label className="flex flex-col gap-1.5 text-xs font-medium text-[var(--ink-2)]">
+              标题 <span className="font-normal text-[var(--ink-3)]">可选，最多 120 字</span>
+              <Input
+                value={title}
+                maxLength={120}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="例如：项目方案预览"
+              />
+            </label>
+            <label className="flex flex-col gap-1.5 text-xs font-medium text-[var(--ink-2)]">
+              标签 <span className="font-normal text-[var(--ink-3)]">可选，最多 20 个</span>
+              <Select
+                mode="tags"
+                value={tags}
+                onChange={(values: string[]) => setTags(values.slice(0, 20))}
+                placeholder="输入后按 Enter 添加标签"
+                tokenSeparators={[",", "，"]}
+                maxTagCount="responsive"
+                options={[]}
+              />
+            </label>
+          </div>
+
+          <div className="flex items-center gap-2.5 font-mono text-[11px] tracking-widest text-[var(--ink-3)]">
+            <span>02 · 目标（创建后不可修改）</span>
             <span className="h-px flex-1 bg-[var(--line)]" />
           </div>
 
