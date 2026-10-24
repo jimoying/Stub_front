@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  build:
+    name: Typecheck / Build / Docker 冒烟
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: 安装 Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 类型检查
+        run: npm run typecheck
+
+      - name: 构建
+        run: npm run build
+
+      # 本地无 Docker 环境时, Dockerfile 的真实验证以本步骤 (Actions 首跑) 为准
+      - name: Docker 构建冒烟 (仅验证可构建, 不推送)
+        run: docker build -t stub-front:ci .
