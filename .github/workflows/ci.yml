@@ -50,6 +50,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: 生成小写镜像仓库名
+        id: repo
+        run: echo "owner=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+
       # master push: 构建 + 推送 ghcr.io/<owner>/stub-front:latest 与 :git-sha
       # 其他情况: 仅构建 (push=false), 即冒烟验证
       - name: Docker 构建 (master 推送 GHCR)
@@ -58,5 +62,5 @@ jobs:
           context: .
           push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' }}
           tags: |
-            ghcr.io/${{ github.repository_owner }}/stub-front:latest
-            ghcr.io/${{ github.repository_owner }}/stub-front:${{ github.sha }}
+            ghcr.io/${{ steps.repo.outputs.owner }}/stub-front:latest
+            ghcr.io/${{ steps.repo.outputs.owner }}/stub-front:${{ github.sha }}
